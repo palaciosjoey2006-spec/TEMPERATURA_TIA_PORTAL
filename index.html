@@ -1,319 +1,641 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart IoT - Control Térmico</title>
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <style>
-    :root {
-      --bg-color: #0d1117;
-      --card-bg: #161b22;
-      --border-color: #30363d;
-      --text-main: #f0f6fc;
-      --text-muted: #8b949e;
-      --accent-blue: #58a6ff;
-      --accent-green: #2ea043;
-      --accent-red: #da3633;
-      --glow-green: rgba(46, 160, 67, 0.4);
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: var(--bg-color);
-      color: var(--text-main);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
-    }
+    <title>Smart IoT - Control Térmico</title>
 
-    .dashboard {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      padding: 2.5rem;
-      border-radius: 20px;
-      text-align: center;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-      width: 380px;
-      box-sizing: border-box;
-    }
+    <!-- Librería MQTT -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
-    h2 {
-      margin-top: 0;
-      font-size: 1.5rem;
-      font-weight: 600;
-      letter-spacing: -0.5px;
-      margin-bottom: 1.5rem;
-      color: var(--text-main);
-    }
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #2ea043;
+            --accent-red: #da3633;
+            --glow-green: rgba(46, 160, 67, 0.4);
+        }
 
-    .sensors-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 15px;
-    }
+        * {
+            box-sizing: border-box;
+        }
 
-    .temp-card {
-      background: #21262d;
-      border: 1px solid var(--border-color);
-      padding: 12px;
-      border-radius: 12px;
-      text-align: center;
-    }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont,
+                "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-    .temp-card span {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
+            background: var(--bg-color);
+            color: var(--text-main);
 
-    .temp-card .val {
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: var(--accent-blue);
-      margin-top: 4px;
-    }
+            display: flex;
+            justify-content: center;
+            align-items: center;
 
-    .promedio-card {
-      background: linear-gradient(135deg, #1f242c, #161b22);
-      border: 2px solid var(--accent-green);
-      padding: 16px;
-      border-radius: 14px;
-      margin-bottom: 2rem;
-      box-shadow: 0 0 15px var(--glow-green);
-    }
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
 
-    .promedio-card span {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-    }
+        .dashboard {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
 
-    .promedio-card .val {
-      font-size: 2.2rem;
-      font-weight: 800;
-      color: var(--accent-green);
-      margin-top: 4px;
-    }
+            padding: 2rem;
+            border-radius: 20px;
 
-    .control-section {
-      background: #21262d;
-      border: 1px solid var(--border-color);
-      padding: 16px;
-      border-radius: 14px;
-      margin-bottom: 1.5rem;
-    }
+            text-align: center;
 
-    .mode-toggle-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 15px;
-    }
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
 
-    .mode-label {
-      font-size: 0.95rem;
-      font-weight: 600;
-      text-align: left;
-    }
+            width: 100%;
+            max-width: 420px;
+        }
 
-    /* Estilo Moderno del Switch (Botón deslizante) */
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 54px;
-      height: 28px;
-    }
+        h2 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            margin-bottom: 1.5rem;
+        }
 
-    .switch input { 
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
+        .sensors-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
 
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #30363d;
-      transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
-      border-radius: 28px;
-      border: 1px solid var(--border-color);
-    }
+        .temp-card {
+            background: #21262d;
+            border: 1px solid var(--border-color);
 
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 20px;
-      width: 20px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
-      border-radius: 50%;
-    }
+            padding: 15px;
+            border-radius: 12px;
+        }
 
-    input:checked + .slider {
-      background-color: var(--accent-green);
-      border-color: var(--accent-green);
-    }
+        .temp-card span {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-    input:checked + .slider:before {
-      transform: translateX(26px);
-    }
+        .temp-card .val {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-top: 8px;
+        }
 
-    .action-buttons {
-      display: flex;
-      gap: 10px;
-    }
+        .promedio-card {
+            background: linear-gradient(135deg, #1f242c, #161b22);
+            border: 2px solid var(--accent-green);
 
-    button {
-      flex: 1;
-      padding: 12px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
+            padding: 18px;
+            border-radius: 14px;
 
-    .btn-on {
-      background: var(--accent-green);
-      color: white;
-    }
+            margin-bottom: 2rem;
 
-    .btn-on:hover { filter: brightness(1.1); }
+            box-shadow: 0 0 15px var(--glow-green);
+        }
 
-    .btn-off {
-      background: var(--accent-red);
-      color: white;
-    }
+        .promedio-card span {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
 
-    .btn-off:hover { filter: brightness(1.1); }
+        .promedio-card .val {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--accent-green);
+            margin-top: 8px;
+        }
 
-    .disabled {
-      opacity: 0.35;
-      pointer-events: none;
-      filter: grayscale(80%);
-    }
+        .control-section {
+            background: #21262d;
+            border: 1px solid var(--border-color);
 
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      background: #21262d;
-      padding: 6px 12px;
-      border-radius: 20px;
-      border: 1px solid var(--border-color);
-    }
+            padding: 16px;
+            border-radius: 14px;
 
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      background-color: var(--accent-red);
-      border-radius: 50%;
-      transition: background-color 0.3s;
-    }
+            margin-bottom: 1.5rem;
+        }
 
-    .status-dot.online {
-      background-color: var(--accent-green);
-      box-shadow: 0 0 8px var(--accent-green);
-    }
-  </style>
+        .mode-toggle-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .mode-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-align: left;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 54px;
+            height: 28px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+
+            background-color: #30363d;
+            transition: 0.3s;
+
+            border-radius: 28px;
+            border: 1px solid var(--border-color);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+
+            height: 20px;
+            width: 20px;
+
+            left: 3px;
+            bottom: 3px;
+
+            background-color: white;
+            transition: 0.3s;
+
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-green);
+            border-color: var(--accent-green);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+
+            padding: 12px;
+
+            font-size: 0.95rem;
+            font-weight: 600;
+
+            border: none;
+            border-radius: 10px;
+
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-on {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        .btn-off {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        button:hover {
+            filter: brightness(1.15);
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        .disabled {
+            opacity: 0.35;
+            pointer-events: none;
+            filter: grayscale(80%);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+
+            font-size: 0.8rem;
+            color: var(--text-muted);
+
+            background: #21262d;
+
+            padding: 8px 14px;
+            border-radius: 20px;
+
+            border: 1px solid var(--border-color);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+
+            background-color: var(--accent-red);
+            border-radius: 50%;
+
+            transition: background-color 0.3s;
+        }
+
+        .status-dot.online {
+            background-color: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        .footer {
+            margin-top: 18px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        @media (max-width: 400px) {
+            .dashboard {
+                padding: 1.3rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
+
 <body>
 
-<div class="dashboard">
-  <h2>Monitor IoT Inteligente</h2>
-  
-  <div class="sensors-grid">
-    <div class="temp-card">
-      <span>Sensor 1</span>
-      <div class="val" id="temp1">-- °C</div>
+    <div class="dashboard">
+
+        <h2>Monitor IoT Inteligente</h2>
+
+        <!-- SENSORES -->
+        <div class="sensors-grid">
+
+            <div class="temp-card">
+                <span>Sensor 1</span>
+                <div class="val" id="temp1">-- °C</div>
+            </div>
+
+            <div class="temp-card">
+                <span>Sensor 2</span>
+                <div class="val" id="temp2">-- °C</div>
+            </div>
+
+        </div>
+
+        <!-- PROMEDIO -->
+        <div class="promedio-card">
+
+            <span>Temperatura Promedio</span>
+
+            <div class="val" id="promedio">
+                -- °C
+            </div>
+
+        </div>
+
+        <!-- CONTROLES -->
+        <div class="control-section">
+
+            <div class="mode-toggle-container">
+
+                <div class="mode-label">
+                    Modo Automático
+                    <br>
+
+                    <small style="color:var(--text-muted); font-weight:normal;">
+                        (Umbral > 25 °C)
+                    </small>
+                </div>
+
+                <label class="switch">
+
+                    <input
+                        type="checkbox"
+                        id="modoSwitch"
+                        onchange="alternarModo()"
+                    >
+
+                    <span class="slider"></span>
+
+                </label>
+
+            </div>
+
+            <!-- CONTROL MANUAL -->
+            <div class="action-buttons" id="panelManual">
+
+                <button
+                    class="btn-on"
+                    onclick="controlarLed('ON')"
+                >
+                    Encender LED
+                </button>
+
+                <button
+                    class="btn-off"
+                    onclick="controlarLed('OFF')"
+                >
+                    Apagar LED
+                </button>
+
+            </div>
+
+        </div>
+
+        <!-- ESTADO MQTT -->
+        <div class="status-badge">
+
+            <div class="status-dot" id="statusDot"></div>
+
+            <span id="estado">
+                Conectando al servidor...
+            </span>
+
+        </div>
+
+        <div class="footer">
+            Smart IoT | Sistema de Control Térmico
+        </div>
+
     </div>
-    <div class="temp-card">
-      <span>Sensor 2</span>
-      <div class="val" id="temp2">-- °C</div>
-    </div>
-  </div>
 
-  <div class="promedio-card">
-    <span>Temperatura Promedio</span>
-    <div class="val" id="promedio">-- °C</div>
-  </div>
+    <script>
 
-  <div class="control-section">
-    <div class="mode-toggle-container">
-      <div class="mode-label">Modo Automático<br><small style="color:var(--text-muted); font-weight:normal;">(Umbral > 25°C)</small></div>
-      <label class="switch">
-        <input type="checkbox" id="modoSwitch" onchange="alternarModo()">
-        <span class="slider"></span>
-      </label>
-    </div>
+        // =====================================
+        // CONFIGURACIÓN MQTT
+        // =====================================
 
-    <div class="action-buttons" id="panelManual">
-      <button class="btn-on" onclick="controlarLed('ON')">Encender LED</button>
-      <button class="btn-off" onclick="controlarLed('OFF')">Apagar LED</button>
-    </div>
-  </div>
-  
-  <div class="status-badge">
-    <div class="status-dot" id="statusDot"></div>
-    <span id="estado">Conectando al servidor...</span>
-  </div>
-</div>
+        const t1Topic = "mi_proyecto_unico_99/temp1";
+        const t2Topic = "mi_proyecto_unico_99/temp2";
+        const promTopic = "mi_proyecto_unico_99/promedio";
 
-<script>
-  const t1Topic = "mi_proyecto_unico_99/temp1";
-  const t2Topic = "mi_proyecto_unico_99/temp2";
-  const promTopic = "mi_proyecto_unico_99/promedio";
-  const ledTopic = "mi_proyecto_unico_99/led";
-  const modoTopic = "mi_proyecto_unico_99/modo";
+        const ledTopic = "mi_proyecto_unico_99/led";
+        const modoTopic = "mi_proyecto_unico_99/modo";
 
-  const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
 
-  client.on("connect", () => {
-    document.getElementById("estado").innerText = "Sistema en línea";
-    document.getElementById("statusDot").classList.add("online");
-    client.subscribe(t1Topic);
-    client.subscribe(t2Topic);
-    client.subscribe(promTopic);
-  });
+        // =====================================
+        // CONEXIÓN AL BROKER HIVEMQ
+        // =====================================
 
-  client.on("message", (topic, message) => {
-    if (topic === t1Topic) {
-      document.getElementById("temp1").innerText = message.toString() + " °C";
-    } else if (topic === t2Topic) {
-      document.getElementById("temp2").innerText = message.toString() + " °C";
-    } else if (topic === promTopic) {
-      document.getElementById("promedio").innerText = message.toString() + " °C";
-    }
-  });
+        const client = mqtt.connect(
+            "wss://broker.hivemq.com:8884/mqtt",
+            {
+                clientId: "WEB_SMART_IOT_" +
+                    Math.random().toString(16).slice(2),
 
-  function alternarModo() {
-    const isAuto = document.getElementById("modoSwitch").checked;
-    const modo = isAuto ? "AUTO" : "MANUAL";
-    client.publish(modoTopic, modo);
+                reconnectPeriod: 3000,
+                connectTimeout: 10000
+            }
+        );
 
-    const panelManual = document.getElementById("panelManual");
-    if (isAuto) {
-      panelManual.classList.add("disabled");
-    } else {
-      panelManual.classList.remove("disabled");
-    }
-  }
 
-  function controlarLed(accion) {
-    client.publish(ledTopic, accion);
-  }
-</script>
+        // =====================================
+        // CUANDO SE CONECTA
+        // =====================================
+
+        client.on("connect", function () {
+
+            console.log("Conectado al broker MQTT");
+
+            document.getElementById("estado").innerText =
+                "Sistema en línea";
+
+            document.getElementById("statusDot")
+                .classList.add("online");
+
+
+            // SUSCRIPCIÓN A TEMPERATURAS
+
+            client.subscribe([
+                t1Topic,
+                t2Topic,
+                promTopic
+            ], function (error) {
+
+                if (error) {
+                    console.error(
+                        "Error al suscribirse:",
+                        error
+                    );
+                } else {
+                    console.log(
+                        "Suscripciones MQTT activas"
+                    );
+                }
+
+            });
+
+        });
+
+
+        // =====================================
+        // RECIBIR DATOS DEL ESP32
+        // =====================================
+
+        client.on("message", function (topic, message) {
+
+            const valor = message.toString();
+
+            console.log(
+                "Mensaje recibido:",
+                topic,
+                valor
+            );
+
+
+            if (topic === t1Topic) {
+
+                document.getElementById("temp1")
+                    .innerText = valor + " °C";
+
+            }
+
+
+            if (topic === t2Topic) {
+
+                document.getElementById("temp2")
+                    .innerText = valor + " °C";
+
+            }
+
+
+            if (topic === promTopic) {
+
+                document.getElementById("promedio")
+                    .innerText = valor + " °C";
+
+            }
+
+        });
+
+
+        // =====================================
+        // ESTADO DE CONEXIÓN
+        // =====================================
+
+        client.on("offline", function () {
+
+            document.getElementById("estado").innerText =
+                "Desconectado del servidor";
+
+            document.getElementById("statusDot")
+                .classList.remove("online");
+
+        });
+
+
+        client.on("reconnect", function () {
+
+            document.getElementById("estado").innerText =
+                "Reconectando...";
+
+        });
+
+
+        client.on("error", function (error) {
+
+            console.error("Error MQTT:", error);
+
+            document.getElementById("estado").innerText =
+                "Error de conexión";
+
+        });
+
+
+        // =====================================
+        // CAMBIAR MODO AUTOMÁTICO / MANUAL
+        // =====================================
+
+        function alternarModo() {
+
+            if (!client.connected) {
+
+                alert(
+                    "No hay conexión con el servidor MQTT"
+                );
+
+                document.getElementById("modoSwitch")
+                    .checked = false;
+
+                return;
+            }
+
+
+            const isAuto =
+                document.getElementById("modoSwitch")
+                    .checked;
+
+
+            const modo = isAuto
+                ? "AUTO"
+                : "MANUAL";
+
+
+            // ENVIAR MODO AL ESP32
+
+            client.publish(modoTopic, modo);
+
+
+            // BLOQUEAR O HABILITAR BOTONES
+
+            const panelManual =
+                document.getElementById("panelManual");
+
+
+            if (isAuto) {
+
+                panelManual.classList.add("disabled");
+
+            } else {
+
+                panelManual.classList.remove("disabled");
+
+            }
+
+
+            console.log(
+                "Modo enviado al ESP32:",
+                modo
+            );
+
+        }
+
+
+        // =====================================
+        // CONTROL MANUAL DEL LED
+        // =====================================
+
+        function controlarLed(accion) {
+
+            if (!client.connected) {
+
+                alert(
+                    "No hay conexión con el servidor MQTT"
+                );
+
+                return;
+            }
+
+
+            // EVITAR CONTROL MANUAL EN MODO AUTO
+
+            const isAuto =
+                document.getElementById("modoSwitch")
+                    .checked;
+
+
+            if (isAuto) {
+
+                alert(
+                    "Desactiva el modo automático para controlar el LED"
+                );
+
+                return;
+            }
+
+
+            // ENVIAR COMANDO AL ESP32
+
+            client.publish(ledTopic, accion);
+
+
+            console.log(
+                "Comando enviado al ESP32:",
+                accion
+            );
+
+        }
+
+    </script>
 
 </body>
 </html>
