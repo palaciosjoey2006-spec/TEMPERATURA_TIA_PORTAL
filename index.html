@@ -3,58 +3,274 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Control IoT - Sensores Dallas Dobles</title>
+  <title>Smart IoT - Control Térmico</title>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
-    body { font-family: system-ui, sans-serif; background: #121212; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-    .card { background: #1e1e1e; padding: 2rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.5); width: 340px; }
-    .temp-box { background: #2a2a2a; padding: 10px; border-radius: 8px; margin: 10px 0; }
-    .temp-val { font-size: 1.5rem; font-weight: bold; color: #00d2ff; }
-    .prom-val { font-size: 2rem; font-weight: bold; color: #00c853; }
-    select { width: 100%; padding: 10px; font-size: 1rem; border-radius: 8px; background: #333; color: #fff; border: 1px solid #555; margin-bottom: 15px; }
-    button { padding: 10px 20px; font-size: 1rem; border: none; border-radius: 8px; cursor: pointer; margin: 5px; font-weight: bold; width: 45%; }
-    .btn-on { background: #00c853; color: #fff; }
-    .btn-off { background: #d50000; color: #fff; }
-    .status { font-size: 0.85rem; color: #aaa; margin-top: 1rem; }
-    .disabled { opacity: 0.4; pointer-events: none; }
+    :root {
+      --bg-color: #0d1117;
+      --card-bg: #161b22;
+      --border-color: #30363d;
+      --text-main: #f0f6fc;
+      --text-muted: #8b949e;
+      --accent-blue: #58a6ff;
+      --accent-green: #2ea043;
+      --accent-red: #da3633;
+      --glow-green: rgba(46, 160, 67, 0.4);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .dashboard {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 2.5rem;
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      width: 380px;
+      box-sizing: border-box;
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      margin-bottom: 1.5rem;
+      color: var(--text-main);
+    }
+
+    .sensors-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .temp-card {
+      background: #21262d;
+      border: 1px solid var(--border-color);
+      padding: 12px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .temp-card span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .temp-card .val {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      margin-top: 4px;
+    }
+
+    .promedio-card {
+      background: linear-gradient(135deg, #1f242c, #161b22);
+      border: 2px solid var(--accent-green);
+      padding: 16px;
+      border-radius: 14px;
+      margin-bottom: 2rem;
+      box-shadow: 0 0 15px var(--glow-green);
+    }
+
+    .promedio-card span {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .promedio-card .val {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--accent-green);
+      margin-top: 4px;
+    }
+
+    .control-section {
+      background: #21262d;
+      border: 1px solid var(--border-color);
+      padding: 16px;
+      border-radius: 14px;
+      margin-bottom: 1.5rem;
+    }
+
+    .mode-toggle-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .mode-label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-align: left;
+    }
+
+    /* Estilo Moderno del Switch (Botón deslizante) */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 54px;
+      height: 28px;
+    }
+
+    .switch input { 
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #30363d;
+      transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 28px;
+      border: 1px solid var(--border-color);
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent-green);
+      border-color: var(--accent-green);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-on {
+      background: var(--accent-green);
+      color: white;
+    }
+
+    .btn-on:hover { filter: brightness(1.1); }
+
+    .btn-off {
+      background: var(--accent-red);
+      color: white;
+    }
+
+    .btn-off:hover { filter: brightness(1.1); }
+
+    .disabled {
+      opacity: 0.35;
+      pointer-events: none;
+      filter: grayscale(80%);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: #21262d;
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--accent-red);
+      border-radius: 50%;
+      transition: background-color 0.3s;
+    }
+
+    .status-dot.online {
+      background-color: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+    }
   </style>
 </head>
 <body>
 
-<div class="card">
-  <h2>Control Múltiple Dallas</h2>
+<div class="dashboard">
+  <h2>Monitor IoT Inteligente</h2>
   
-  <div class="temp-box">
-    <div>Sensor 1</div>
-    <div class="temp-val" id="temp1">-- °C</div>
+  <div class="sensors-grid">
+    <div class="temp-card">
+      <span>Sensor 1</span>
+      <div class="val" id="temp1">-- °C</div>
+    </div>
+    <div class="temp-card">
+      <span>Sensor 2</span>
+      <div class="val" id="temp2">-- °C</div>
+    </div>
   </div>
 
-  <div class="temp-box">
-    <div>Sensor 2</div>
-    <div class="temp-val" id="temp2">-- °C</div>
+  <div class="promedio-card">
+    <span>Temperatura Promedio</span>
+    <div class="val" id="promedio">-- °C</div>
   </div>
 
-  <div class="temp-box" style="border: 2px solid #00c853;">
-    <div>Promedio</div>
-    <div class="prom-val" id="promedio">-- °C</div>
-  </div>
+  <div class="control-section">
+    <div class="mode-toggle-container">
+      <div class="mode-label">Modo Automático<br><small style="color:var(--text-muted); font-weight:normal;">(Umbral > 25°C)</small></div>
+      <label class="switch">
+        <input type="checkbox" id="modoSwitch" onchange="alternarModo()">
+        <span class="slider"></span>
+      </label>
+    </div>
 
-  <label for="modoSelect"><strong>Modo de Operación:</strong></label>
-  <select id="modoSelect" onchange="cambiarModo()">
-    <option value="MANUAL">Manual</option>
-    <option value="AUTO">Automático (> 25°C)</option>
-  </select>
-
-  <div id="panelManual">
-    <button class="btn-on" onclick="controlarLed('ON')">Encender</button>
-    <button class="btn-off" onclick="controlarLed('OFF')">Apagar</button>
+    <div class="action-buttons" id="panelManual">
+      <button class="btn-on" onclick="controlarLed('ON')">Encender LED</button>
+      <button class="btn-off" onclick="controlarLed('OFF')">Apagar LED</button>
+    </div>
   </div>
   
-  <div class="status" id="estado">Conectando al servidor...</div>
+  <div class="status-badge">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="estado">Conectando al servidor...</span>
+  </div>
 </div>
 
 <script>
-  // TOPICS MQTT
   const t1Topic = "mi_proyecto_unico_99/temp1";
   const t2Topic = "mi_proyecto_unico_99/temp2";
   const promTopic = "mi_proyecto_unico_99/promedio";
@@ -64,7 +280,8 @@
   const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
 
   client.on("connect", () => {
-    document.getElementById("estado").innerText = "Conectado en línea";
+    document.getElementById("estado").innerText = "Sistema en línea";
+    document.getElementById("statusDot").classList.add("online");
     client.subscribe(t1Topic);
     client.subscribe(t2Topic);
     client.subscribe(promTopic);
@@ -80,13 +297,13 @@
     }
   });
 
-  function cambiarModo() {
-    const modo = document.getElementById("modoSelect").value;
+  function alternarModo() {
+    const isAuto = document.getElementById("modoSwitch").checked;
+    const modo = isAuto ? "AUTO" : "MANUAL";
     client.publish(modoTopic, modo);
 
-    // Deshabilita los botones manuales en la web si está en automático
     const panelManual = document.getElementById("panelManual");
-    if (modo === "AUTO") {
+    if (isAuto) {
       panelManual.classList.add("disabled");
     } else {
       panelManual.classList.remove("disabled");
