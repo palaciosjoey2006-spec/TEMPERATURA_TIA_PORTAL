@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control IoT - Dallas DS18B20</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #121212; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+    .card { background: #1e1e1e; padding: 2rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.5); width: 300px; }
+    .temp { font-size: 3rem; font-weight: bold; color: #00d2ff; margin: 1rem 0; }
+    button { padding: 12px 24px; font-size: 1rem; border: none; border-radius: 8px; cursor: pointer; margin: 5px; font-weight: bold; }
+    .btn-on { background: #00c853; color: #fff; }
+    .btn-off { background: #d50000; color: #fff; }
+    .status { font-size: 0.85rem; color: #aaa; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Sensor Dallas</h2>
+  <div class="temp" id="temperatura">-- °C</div>
+  
+  <button class="btn-on" onclick="controlarLed('ON')">Encender LED</button>
+  <button class="btn-off" onclick="controlarLed('OFF')">Apagar LED</button>
+  
+  <div class="status" id="estado">Conectando al servidor...</div>
+</div>
+
+<script>
+  // DEBEN SER EXACTAMENTE LOS MISMOS TOPICS DEL ESP32
+  const topicTemp = "mi_proyecto_unico_99/temperatura";
+  const topicLed  = "mi_proyecto_unico_99/led";
+
+  // Conexión segura WSS (puerto 8884 en HiveMQ) para compatibilidad con GitHub Pages (HTTPS)
+  const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+
+  client.on("connect", () => {
+    document.getElementById("estado").innerText = "Conectado en línea";
+    client.subscribe(topicTemp);
+  });
+
+  client.on("message", (topic, message) => {
+    if (topic === topicTemp) {
+      document.getElementById("temperatura").innerText = message.toString() + " °C";
+    }
+  });
+
+  function controlarLed(accion) {
+    client.publish(topicLed, accion);
+  }
+</script>
+
+</body>
+</html>
